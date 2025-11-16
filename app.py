@@ -108,4 +108,8 @@ if audio_file is not None:
 
 # Tips
 st.markdown("""
-### Tips for Bett
+### Tips for Better Transcription:
+1. **Use "base" or "small" model** for better quality
+2. **Ensure clear audio** with minimal background noise
+3. **Specify the language** if you know it
+""")
