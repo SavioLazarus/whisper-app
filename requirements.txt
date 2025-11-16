@@ -3,4 +3,3 @@ openai-whisper
 torch
 torchaudio
 requests
-ffmpeg-python
