@@ -99,6 +99,69 @@ if audio_file is not None:
                 # Transcribe with progress
                 with st.spinner("Transcribing..."):
                     try:
-                        options = {
-                            "task": "transcribe",
-                            "fp16": device
+                        options = {"task": "transcribe", "fp16": device == "cuda"}
+                        
+                        if language != "Auto-detect":
+                            options["language"] = language.lower()
+                        
+                        # Add progress indicator
+                        progress_bar = st.progress(0)
+                        progress_bar.text("Starting transcription...")
+                        
+                        result = model.transcribe(audio, **options)
+                        
+                        progress_bar.progress(100)
+                        progress_bar.text("Transcription complete!")
+                        
+                    except Exception as transcribe_error:
+                        st.error(f"Transcription failed: {transcribe_error}")
+                        st.info("Try using a smaller model or shorter audio file")
+                        return
+                
+                # Show result
+                st.success("Transcription complete!")
+                
+                # Display transcription
+                if "text" in result:
+                    st.subheader("Transcription:")
+                    st.write(result["text"])
+                    
+                    # Show language info
+                    if "language" in result:
+                        st.info(f"Detected language: {result['language'].upper()}")
+                
+                # Show segments with timestamps
+                if st.checkbox("Show timestamps"):
+                    if "segments" in result:
+                        for segment in result["segments"]:
+                            start = segment["start"]
+                            end = segment["end"]
+                            text = segment["text"]
+                            st.write(f"[{start:.2f}s - {end:.2f}s] {text}")
+                
+                # Download button
+                st.download_button(
+                    label="Download transcription",
+                    data=result["text"],
+                    file_name="transcription.txt",
+                    mime="text/plain"
+                )
+                
+            except Exception as e:
+                st.error(f"Unexpected error: {e}")
+                st.write("Please try again with a smaller model or different audio file")
+
+# Tips
+st.markdown("""
+### Tips for Better Results:
+1. **Start with "base" model** - good balance of quality and speed
+2. **Use "tiny" for very long files** or slow connections
+3. **Keep files under 10MB** for best performance
+4. **Specify the language** if you know it for better accuracy
+5. **Use clear audio** with minimal background noise
+
+### Model Recommendations:
+- **Tiny**: Fastest, good for testing
+- **Base**: Best overall choice for most users
+- **Small**: Better quality but slower on free tier
+""")
