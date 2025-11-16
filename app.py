@@ -1,10 +1,10 @@
 import streamlit as st
 import whisper
 import torch
-import os
-import tempfile
-from io import BytesIO
-import time
+import numpy as np
+import io
+import librosa
+import soundfile as sf
 
 # Copyright (c) 2024 SavioLazarus
 # Licensed under MIT License - see LICENSE file for details
@@ -18,13 +18,10 @@ st.set_page_config(
 
 # App title
 st.title("🎙️ Whisper Transcription App")
-st.write("Upload a WAV file to transcribe it")
+st.write("Upload an audio file to transcribe it")
 
-# Important notice
-st.warning("⚠️ Currently only WAV files are supported. MP3 support requires ffmpeg which is not available on Streamlit Cloud.")
-
-# File uploader - only WAV
-audio_file = st.file_uploader("Upload a WAV file", type=["wav"])
+# File uploader
+audio_file = st.file_uploader("Upload an audio file", type=["wav", "mp3", "m4a"])
 
 if audio_file is not None:
     st.audio(audio_file)
@@ -32,22 +29,23 @@ if audio_file is not None:
     if st.button("Transcribe"):
         with st.spinner("Loading model..."):
             try:
-                # Load the smallest model to start
+                # Load the model
                 model = whisper.load_model("tiny")
                 
-                # Save the uploaded file
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-                    tmp.write(audio_file.getvalue())
-                    tmp_path = tmp.name
+                # Read audio file using librosa
+                audio_bytes = audio_file.read()
                 
-                st.write(f"Processing file: {tmp_path}")
+                # Create a file-like object from bytes
+                audio_io = io.BytesIO(audio_bytes)
                 
-                # Transcribe
+                # Load audio with librosa
+                audio, sr = librosa.load(audio_io, sr=16000)
+                
+                st.write(f"Audio loaded: {len(audio)} samples at {sr} Hz")
+                
+                # Transcribe directly from numpy array
                 with st.spinner("Transcribing..."):
-                    result = model.transcribe(tmp_path)
-                
-                # Clean up
-                os.unlink(tmp_path)
+                    result = model.transcribe(audio)
                 
                 # Show result
                 st.success("Transcription complete!")
@@ -55,12 +53,6 @@ if audio_file is not None:
                 
             except Exception as e:
                 st.error(f"Error: {e}")
-                st.write("This is a detailed error message to help debug the issue.")
-
-# Instructions for converting MP3 to WAV
-st.markdown("""
-### How to Convert MP3 to WAV:
-1. Use online converters like [Online Audio Converter](https://online-audio-converter.com/)
-2. Use free software like [Audacity](https://www.audacityteam.org/)
-3. Use command line: `ffmpeg -i input.mp3 output.wav` (if you have ffmpeg)
-""")
+                st.write("Debug info:")
+                st.write(f"File type: {audio_file.type}")
+                st.write(f"File size: {audio_file.size} bytes")
