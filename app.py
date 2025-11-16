@@ -113,10 +113,15 @@ with col2:
                     device = "cuda" if torch.cuda.is_available() else "cpu"
                     model = whisper.load_model(selected_model, device=device)
                     
-                    # Save audio temporarily
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp:
-                        temp.write(audio_file.read())
-                        temp_path = temp.name
+                   # Save audio temporarily
+with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp:
+    temp.write(audio_file.read())
+    temp_path = temp.name
+
+# Convert audio to WAV format for Whisper
+import subprocess
+wav_path = temp_path.replace('.mp3', '.wav')
+subprocess.run(['ffmpeg', '-i', temp_path, wav_path], check=True)
                     
                     # Process
                     with st.spinner("Processing audio..."):
@@ -134,7 +139,8 @@ with col2:
                         processing_time = time.time() - start_time
                         
                         # Clean up
-                        os.unlink(temp_path)
+os.unlink(temp_path)
+os.unlink(wav_path)
                     
                     # Results
                     st.success(f"Done in {processing_time:.2f} seconds!")
