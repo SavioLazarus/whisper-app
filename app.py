@@ -18,10 +18,13 @@ st.set_page_config(
 
 # App title
 st.title("🎙️ Whisper Transcription App")
-st.write("Upload an audio file to transcribe it")
+st.write("Upload a WAV file to transcribe it")
 
-# File uploader
-audio_file = st.file_uploader("Upload an audio file", type=["mp3", "wav"])
+# Important notice
+st.warning("⚠️ Currently only WAV files are supported. MP3 support requires ffmpeg which is not available on Streamlit Cloud.")
+
+# File uploader - only WAV
+audio_file = st.file_uploader("Upload a WAV file", type=["wav"])
 
 if audio_file is not None:
     st.audio(audio_file)
@@ -33,7 +36,7 @@ if audio_file is not None:
                 model = whisper.load_model("tiny")
                 
                 # Save the uploaded file
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
                     tmp.write(audio_file.getvalue())
                     tmp_path = tmp.name
                 
@@ -53,3 +56,11 @@ if audio_file is not None:
             except Exception as e:
                 st.error(f"Error: {e}")
                 st.write("This is a detailed error message to help debug the issue.")
+
+# Instructions for converting MP3 to WAV
+st.markdown("""
+### How to Convert MP3 to WAV:
+1. Use online converters like [Online Audio Converter](https://online-audio-converter.com/)
+2. Use free software like [Audacity](https://www.audacityteam.org/)
+3. Use command line: `ffmpeg -i input.mp3 output.wav` (if you have ffmpeg)
+""")
