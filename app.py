@@ -7,7 +7,6 @@ from io import BytesIO
 import time
 from datetime import datetime
 import requests
-import subprocess
 
 # Copyright (c) 2024 SavioLazarus
 # Licensed under MIT License - see LICENSE file for details
@@ -54,7 +53,7 @@ st.markdown("""
 
 # App title
 st.markdown('<h1 class="main-header">🎙️ Whisper Transcription App</h1>', unsafe_allow_html=True)
-st.markdown('<p style="text-align: center; margin-bottom: 2rem;">Transcribe audio and video files using OpenAI\'s Whisper model</p>', unsafe_allow_html=True)
+st.markdown('<p style="text-align: center; margin-bottom: 2rem;">Transcribe audio files using OpenAI\'s Whisper model</p>', unsafe_allow_html=True)
 
 # Sidebar
 with st.sidebar:
@@ -82,29 +81,18 @@ with st.sidebar:
         options=["Auto-detect", "English", "Spanish", "French", "German", "Chinese", "Japanese", "Korean", "Russian", "Arabic", "Hindi", "Portuguese", "Italian", "Dutch"],
         index=0
     )
-    
-    # Advanced settings
-    with st.expander("Advanced Settings"):
-        chunk_size = st.slider(
-            "Process in chunks (minutes)",
-            min_value=0,
-            max_value=30,
-            value=0,
-            step=5,
-            help="Split long files into chunks. Set to 0 to process entire file at once."
-        )
 
 # Main content
 col1, col2 = st.columns([1, 1])
 
 with col1:
-    st.markdown("### Upload Media")
+    st.markdown("### Upload Audio")
     
-    # Support both audio and video formats
+    # Support audio formats that work well with Whisper
     audio_file = st.file_uploader(
-        "Choose an audio or video file",
-        type=["mp3", "wav", "m4a", "flac", "ogg", "mp4", "avi", "mov", "mkv", "wmv", "webm"],
-        help="Supported Audio: MP3, WAV, M4A, FLAC, OGG | Supported Video: MP4, AVI, MOV, MKV, WMV, WebM"
+        "Choose an audio file",
+        type=["mp3", "wav", "m4a", "flac", "ogg"],
+        help="Supported: MP3, WAV, M4A, FLAC, OGG"
     )
     
     if audio_file is not None:
@@ -112,11 +100,8 @@ with col1:
         file_size = audio_file.size / (1024 * 1024)  # Convert to MB
         st.markdown(f'<div class="file-info">📁 File: {audio_file.name} ({file_size:.2f} MB)</div>', unsafe_allow_html=True)
         
-        # Show media preview
-        if audio_file.type.startswith('video/'):
-            st.video(audio_file)
-        else:
-            st.audio(audio_file)
+        # Show audio preview
+        st.audio(audio_file)
         
         # Example audio
         st.markdown("### Or Try Example")
@@ -132,7 +117,7 @@ with col1:
 with col2:
     st.markdown("### Results")
     
-    if st.button("🚀 Process Media", type="primary"):
+    if st.button("🚀 Process Audio", type="primary"):
         if audio_file is not None:
             with st.spinner(f"Loading {selected_model} model..."):
                 try:
@@ -140,22 +125,10 @@ with col2:
                     device = "cuda" if torch.cuda.is_available() else "cpu"
                     model = whisper.load_model(selected_model, device=device)
                     
-                    # Save media temporarily
-                    with tempfile.NamedTemporaryFile(delete=False) as temp:
+                    # Save audio temporarily
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp:
                         temp.write(audio_file.read())
                         temp_path = temp.name
-                    
-                    # Get file extension
-                    file_extension = os.path.splitext(audio_file.name)[1].lower()
-                    
-                    # Convert to audio if it's a video file
-                    if file_extension in ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.webm']:
-                        with st.spinner("Extracting audio from video..."):
-                            audio_path = temp_path.replace(file_extension, '.wav')
-                            subprocess.run(['ffmpeg', '-i', temp_path, '-vn', '-acodec', 'pcm_s16le', '-ar', '16000', audio_path], 
-                                         check=True, capture_output=True)
-                        os.unlink(temp_path)  # Remove video file
-                        temp_path = audio_path
                     
                     # Process audio
                     with st.spinner("Transcribing audio..."):
@@ -170,15 +143,8 @@ with col2:
                         if language != "Auto-detect":
                             options["language"] = language.lower()
                         
-                        # Process entire file or in chunks
-                        if chunk_size > 0:
-                            # Process in chunks for long files
-                            chunk_duration = chunk_size * 60  # Convert minutes to seconds
-                            result = model.transcribe(temp_path, **options)
-                        else:
-                            # Process entire file
-                            result = model.transcribe(temp_path, **options)
-                        
+                        # Process the file
+                        result = model.transcribe(temp_path, **options)
                         processing_time = time.time() - start_time
                         
                         # Clean up
@@ -238,9 +204,9 @@ with col2:
                     
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
-                    st.info("Tips: Try using a smaller model, shorter file, or enable chunk processing in Advanced Settings")
+                    st.info("Tips: Try using a smaller model (tiny or base) or a shorter audio file")
         else:
-            st.error("Please upload an audio or video file first")
+            st.error("Please upload an audio file first")
 
 # Footer
 st.markdown('<p style="text-align: center; margin-top: 2rem; color: #888;">Made with ❤️ using OpenAI Whisper • Developed with AI assistance from GLM-4.6</p>', unsafe_allow_html=True)
