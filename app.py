@@ -30,7 +30,7 @@ if audio_file is not None:
         with st.spinner("Loading model..."):
             try:
                 # Load the model
-                model = whisper.load_model("medium")
+                model = whisper.load_model("tiny")
                 
                 # Read audio file using librosa
                 audio_bytes = audio_file.read()
