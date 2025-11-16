@@ -4,7 +4,6 @@ import torch
 import numpy as np
 import io
 import librosa
-import soundfile as sf
 
 # Copyright (c) 2024 SavioLazarus
 # Licensed under MIT License - see LICENSE file for details
@@ -24,48 +23,21 @@ st.write("Upload an audio file to transcribe it")
 with st.sidebar:
     st.header("Settings")
     
-    # Model selection with quality info
-    model_options = ["tiny", "base", "small", "medium", "large"]
-    model_info = {
-        "tiny": "Fastest, lowest quality",
-        "base": "Good balance of speed and quality",
-        "small": "Better quality, slower",
-        "medium": "High quality, much slower",
-        "large": "Best quality, very slow"
-    }
-    
+    # Model selection
+    model_options = ["tiny", "base", "small", "medium"]
     selected_model = st.selectbox(
         "Select Model",
         options=model_options,
-        index=1,  # Default to "base" for better quality
-        format_func=lambda x: f"{x} - {model_info[x]}"
+        index=1,  # Default to "base"
+        help="Larger models are more accurate but slower"
     )
     
     # Language selection
     language = st.selectbox(
         "Language",
-        options=["Auto-detect", "English", "Spanish", "French", "German", "Chinese", "Japanese", "Korean", "Russian", "Arabic", "Hindi", "Portuguese", "Italian", "Dutch"],
+        options=["Auto-detect", "English", "Spanish", "French", "German", "Chinese", "Japanese"],
         index=0
     )
-    
-    # Advanced settings
-    with st.expander("Advanced Settings"):
-        temperature = st.slider(
-            "Temperature",
-            min_value=0.0,
-            max_value=1.0,
-            value=0.0,
-            step=0.1,
-            help="Higher temperature makes output more random but may reduce accuracy"
-        )
-        
-        best_of = st.slider(
-            "Number of candidates",
-            min_value=1,
-            max_value=5,
-            value=1,
-            help="Generate multiple candidates and select the best one"
-        )
 
 # File uploader
 audio_file = st.file_uploader("Upload an audio file", type=["wav", "mp3", "m4a"])
@@ -80,26 +52,20 @@ if audio_file is not None:
     if st.button("Transcribe"):
         with st.spinner(f"Loading {selected_model} model..."):
             try:
-                # Load the selected model
+                # Load model
                 model = whisper.load_model(selected_model)
                 
-                # Read audio file using librosa
+                # Read audio file
                 audio_bytes = audio_file.read()
                 audio_io = io.BytesIO(audio_bytes)
                 audio, sr = librosa.load(audio_io, sr=16000)
                 
                 st.write(f"Audio loaded: {len(audio)} samples at {sr} Hz")
                 
-                # Transcribe with better settings
+                # Transcribe
                 with st.spinner("Transcribing..."):
-                    options = {
-                        "task": "transcribe",
-                        "fp16": torch.cuda.is_available(),
-                        "temperature": temperature,
-                        "best_of": best_of
-                    }
+                    options = {"task": "transcribe"}
                     
-                    # Add language if specified
                     if language != "Auto-detect":
                         options["language"] = language.lower()
                     
@@ -108,7 +74,7 @@ if audio_file is not None:
                 # Show result
                 st.success("Transcription complete!")
                 
-                # Display transcription with confidence
+                # Display transcription
                 if "text" in result:
                     st.subheader("Transcription:")
                     st.write(result["text"])
@@ -117,26 +83,20 @@ if audio_file is not None:
                     if "language" in result:
                         st.info(f"Detected language: {result['language'].upper()}")
                 
-                # Show segments with timestamps if available
-                if st.checkbox("Show detailed segments"):
+                # Show segments with timestamps
+                if st.checkbox("Show timestamps"):
                     if "segments" in result:
-                        for i, segment in enumerate(result["segments"]):
+                        for segment in result["segments"]:
                             start = segment["start"]
                             end = segment["end"]
                             text = segment["text"]
-                            
-                            # Show confidence if available
-                            if "avg_logprob" in segment:
-                                confidence = np.exp(segment["avg_logprob"]) * 100
-                                st.write(f"[{start:.2f}s - {end:.2f}s] ({confidence:.1f}% confidence) {text}")
-                            else:
-                                st.write(f"[{start:.2f}s - {end:.2f}s] {text}")
+                            st.write(f"[{start:.2f}s - {end:.2f}s] {text}")
                 
                 # Download button
                 st.download_button(
                     label="Download transcription",
                     data=result["text"],
-                    file_name=f"transcription_{audio_file.name}.txt",
+                    file_name=f"transcription.txt",
                     mime="text/plain"
                 )
                 
@@ -144,4 +104,8 @@ if audio_file is not None:
                 st.error(f"Error: {e}")
                 st.write("Debug info:")
                 st.write(f"File type: {audio_file.type}")
-                st.write(
+                st.write(f"File size: {audio_file.size} bytes")
+
+# Tips
+st.markdown("""
+### Tips for Bett
